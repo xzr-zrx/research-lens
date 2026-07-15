@@ -1,0 +1,113 @@
+# ============================================================
+# 全栈 docker-compose：Milvus + 后端
+# 使用方式：
+#   1. 先确认 .env 中已配置 API Key（或直接编辑 application.yml）
+#   2. docker compose up -d
+#   3. 后端: http://localhost:9900
+#   4. 前端仍需单独启动：cd frontend && npm run dev
+# ============================================================
+
+services:
+  # ==================== Milvus 基础设施 ====================
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.18
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.5.10
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  attu:
+    container_name: milvus-attu
+    image: zilliz/attu:v2.5
+    ports:
+      - "8000:3000"
+    environment:
+      MILVUS_URL: standalone:19530
+    depends_on:
+      - standalone
+
+  # ==================== 后端 ====================
+  backend:
+    build: .
+    container_name: research-backend
+    ports:
+      - "9900:9900"
+    volumes:
+      # 持久化数据：H2 数据库、上传文件
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    environment:
+      # Milvus 地址 → 指向同网络下的 standalone 服务
+      - MILVUS_HOST=standalone
+      - MILVUS_PORT=19530
+      # API Key（通过环境变量注入，覆盖 application.yml 中的占位符）
+      - SPRING_AI_DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-YOUR_DASHSCOPE_API_KEY}
+      - ACADEMIC_OPENALEX_API_KEY=${OPENALEX_API_KEY:-YOUR_OPENALEX_API_KEY}
+      # 文件上传路径
+      - FILE_UPLOAD_PATH=/app/uploads
+      # H2 数据库（覆盖 yml 中的相对路径 + 去掉容器内不需要的 AUTO_SERVER）
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/research-assistant;DB_CLOSE_ON_EXIT=FALSE
+      # JVM 内存
+      - JAVA_TOOL_OPTIONS=-Xmx512m
+    depends_on:
+      standalone:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  default:
+    name: milvus

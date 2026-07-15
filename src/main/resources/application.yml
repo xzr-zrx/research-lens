@@ -1,0 +1,112 @@
+server:
+  port: 9900
+  tomcat:
+    max-swallow-size: -1
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/research-assistant;AUTO_SERVER=TRUE;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+  ai:
+    dashscope:
+      # 本地运行前，将下面占位符替换为你自己的 DashScope API Key。
+      api-key: YOUR_DASHSCOPE_API_KEY
+      chat:
+        options:
+          timeout: 180000
+      retry:
+        max-attempts: 2
+
+file:
+  upload:
+    path: ./uploads
+    allowed-extensions: txt,md,markdown,note,pdf,doc,docx
+
+milvus:
+  host: localhost
+  port: 19530
+  username: ""
+  password: ""
+  database: default
+  timeout: 10000
+
+academic:
+  openalex:
+    base-url: https://api.openalex.org
+    # 本地运行前，将下面占位符替换为你自己的 OpenAlex API Key。
+    api-key: YOUR_OPENALEX_API_KEY
+    max-results-per-query: 20
+  arxiv:
+    base-url: https://export.arxiv.org/api/query
+    max-results-per-query: 10
+    request-interval-ms: 3000
+  search:
+    query-count: 7
+    max-candidates: 50
+    top-results: 15
+  ranking:
+    keyword-weight: 0.60
+    semantic-weight: 0.30
+    quality-weight: 0.10
+    minimum-final-score: 0.25
+    keyword:
+      core-coverage-weight: 0.40
+      title-match-weight: 0.25
+      phrase-group-weight: 0.20
+      abstract-match-weight: 0.15
+      core-keyword-weight: 3.0
+      method-keyword-weight: 2.0
+      expanded-keyword-weight: 1.0
+    quality:
+      recency-weight: 0.40
+      citation-weight: 0.20
+      fulltext-availability-weight: 0.30
+      metadata-completeness-weight: 0.10
+    filtering:
+      minimum-core-title-hit: 1
+      minimum-core-abstract-hit: 2
+      semantic-fallback-threshold: 0.82
+      excluded-title-filter: true
+      excluded-abstract-penalty: 0.20
+  fulltext:
+    connect-timeout-seconds: 15
+    read-timeout-seconds: 60
+    max-size-mb: 50
+    max-redirects: 5
+
+# DashScope Embedding
+dashscope:
+  embedding:
+    model: text-embedding-v4
+
+document:
+  chunk:
+    max-size: 1000
+    overlap: 120
+
+rag:
+  top-k: 8
+  model: qwen3-max
+  history-rounds: 6

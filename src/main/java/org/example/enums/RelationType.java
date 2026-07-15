@@ -1,0 +1,9 @@
+package org.example.enums;
+
+public enum RelationType {
+    HIGHLY_RELATED,
+    SAME_PROBLEM_DIFFERENT_METHOD,
+    SIMILAR_METHOD_DIFFERENT_FIELD,
+    INDIRECT_REFERENCE,
+    LOW_RELEVANCE
+}

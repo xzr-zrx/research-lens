@@ -1,0 +1,29 @@
+# Java
+/target/
+*.class
+*.log
+
+# Frontend
+/frontend/node_modules/
+/frontend/dist/
+
+# Local data
+/data/
+/volumes/
+
+# User uploads are local data. Remove the leading # if you do not want Git to track them.
+#/uploads/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local secrets
+.env
+application-local.yml
+src/main/resources/application-local.yml
